@@ -106,12 +106,14 @@ async function createTransaction(req, res) {
   const debitEntry = await ledgerModel.create({
     account: fromAccount,
     amount: amount,
+    transaction: transaction._id,
     type: "DEBIT",
   }, { session });
 
   const creditEntry = await ledgerModel.create({
     account: toAccount,
     amount: amount,
+    transaction: transaction._id,
     type: "CREDIT",
   }, { session });
 
@@ -137,6 +139,63 @@ async function createTransaction(req, res) {
   res.status(201).json({ message: "Transaction successful", transaction });
 }
 
+async function createInitialFundsTransaction(req,res){
+  const { toAccount, amount, idempotencyKey } = req.body;
+
+  if (!toAccount || !amount || !idempotencyKey) {
+    return res.status(400).json({ message: "toAccount ,amount, idempotencyKey are required" });
+  }
+
+  const toUserAccount = await accountModel.findOne({ _id: toAccount });
+  if (!toUserAccount) {
+    return res.status(404).json({ message: "toAccount not found" });
+  }
+
+  const fromUserAccount = await accountModel.findOne({ 
+    user: req.user._id
+   });
+
+  if (!fromUserAccount) {
+    return res.status(404).json({ message: "System account not found" });
+  }
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  const transaction = new transactionModel({
+    fromAccount: fromUserAccount._id,
+    toAccount,
+    amount,
+    idempotencyKey,
+    status: "PENDING",
+  })
+
+  const debitEntry = await ledgerModel.create([{
+    account: fromUserAccount._id,
+    amount: amount,
+    transaction: transaction._id,
+    type: "DEBIT",
+  }], { session });
+
+  const creditEntry = await ledgerModel.create([{
+    account: toAccount,
+    amount: amount,
+    transaction: transaction._id,
+    type: "CREDIT",
+  }], { session });
+
+  transaction.status = "COMPLETED";
+  await transaction.save({ session });
+
+  await session.commitTransaction();
+  session.endSession();
+
+  return res.status(201).json({ message: "Initial funds transaction successful", transaction });
+
+}
+
+
+
 module.exports = {
-  createTransaction,
+  createTransaction, createInitialFundsTransaction
 };
