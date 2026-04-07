@@ -82,7 +82,7 @@ This project focuses on ensuring **data consistency, reliability, and secure tra
 ---
 
 ## 📂 Project Structure
-
+```bash
 src/
 │
 ├── config/
@@ -92,7 +92,7 @@ src/
 ├── middleware/
 ├── services/
 └── app.js
-
+```
 
 
 ---
@@ -152,8 +152,6 @@ git clone https://github.com/sunnyrawal/banking-ledger.git
 npm install
 
 # Create .env file
-
-
 
 # Server
 PORT=3000
